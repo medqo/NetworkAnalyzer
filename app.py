@@ -2,13 +2,9 @@ import streamlit as st
 
 from diagnosis import get_diagnosis
 from analyzer import analyze_command
-from checker import check_result
+from troubleshooter import check_layer
 from recovery import get_recovery
 
-
-# ==========================
-# ページ設定
-# ==========================
 
 st.set_page_config(
     page_title="ネットワーク診断アシスタント",
@@ -16,145 +12,229 @@ st.set_page_config(
 )
 
 
-st.title("ネットワーク診断アシスタント")
+st.title(
+    "ネットワーク診断アシスタント"
+)
 
 
 st.write(
-    """
-    Cisco Router-on-a-Stick構成を対象としたVLAN / Trunk / Subinterface 障害解析ツールです。
-    """
-)
-
-
-# ==========================
-# 障害選択
-# ==========================
-
-st.header("1. 障害内容の選択")
-
-
-problem = st.selectbox(
-    "発生している障害を選択：",
-
-    [
-        "同一VLANなのに通信できない",
-
-        "異なるVLAN間で通信できない",
-
-        "Router-on-a-Stickが動作しない"
-    ]
+"""
+症状を選択し、OSI参照モデルに基づいて
+L1 → L2 → L3 の順番で障害を切り分けます。
+"""
 )
 
 
 
-# ==========================
-# 原因候補
-# ==========================
+# ======================
+# Session
+# ======================
 
-info = get_diagnosis(problem)
-
-
-st.header("2. 考えられる原因")
+if "step" not in st.session_state:
+    st.session_state.step = 0
 
 
-for layer, causes in info["causes"].items():
+if "problem" not in st.session_state:
+    st.session_state.problem = None
 
 
-    st.subheader(layer)
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 
-    for cause in causes:
+if "finished" not in st.session_state:
+    st.session_state.finished = False
+
+
+
+# ======================
+# 症状選択
+# ======================
+
+if st.session_state.step == 0:
+
+
+    problem = st.selectbox(
+
+        "発生している症状",
+
+        [
+            "同一VLANなのに通信できない",
+
+            "異なるVLAN間で通信できない",
+
+            "Router-on-a-Stickが動作しない"
+        ]
+
+    )
+
+
+
+    if st.button(
+        "診断開始"
+    ):
+
+
+        st.session_state.problem = problem
+
+        st.session_state.step = 1
+
+        st.session_state.history = []
+
+        st.session_state.finished = False
+
+
+        st.rerun()
+
+
+
+# ======================
+# 原因候補表示
+# ======================
+
+
+if st.session_state.problem:
+
+
+    info = get_diagnosis(
+        st.session_state.problem
+    )
+
+
+    st.subheader(
+        "考えられる原因"
+    )
+
+
+    cols = st.columns(3)
+
+
+    for i, layer in enumerate(
+        ["L1", "L2", "L3"]
+    ):
+
+
+        with cols[i]:
+
+
+            st.write(
+                f"### {layer}"
+            )
+
+
+            for cause in info["causes"][layer]:
+
+
+                st.write(
+                    "- " + cause
+                )
+
+
+
+# ======================
+# 診断履歴
+# ======================
+
+
+if st.session_state.history:
+
+
+    st.subheader(
+        "診断履歴"
+    )
+
+
+    for h in st.session_state.history:
+
+
+        if h["error"] == "none":
+
+
+            st.success(
+                f'{h["layer"]} 正常'
+            )
+
+
+        else:
+
+
+            st.error(
+                f'{h["layer"]} 異常'
+            )
 
 
         st.write(
-            "- " + cause
+            "結果:",
+            h["reason"]
         )
 
 
 
-# ==========================
-# 確認コマンド
-# ==========================
+# ======================
+# 現在Layer診断
+# ======================
 
 
-st.header("3. 確認すべきコマンド")
+if (
+    st.session_state.step > 0
 
-command = st.selectbox(
+    and
 
-    "実行したshowコマンドを選択：",
-
-    info["commands"]
-
-)
-
-
-
-st.info(
-    f"""
-    Cisco CLIで上記のコマンドを実行してください。
-
-    実行結果を下の入力欄に貼り付けてください。
-    """
-)
-
-
-
-# ==========================
-# コマンド結果入力
-# ==========================
-
-
-st.header("4. コマンド実行結果")
-
-
-output = st.text_area(
-
-    "showコマンド結果：",
-
-    height=300,
-
-
-    placeholder=
-"""
-例:
-
-Port        Mode
-Fa0/7       trunk
-
-
-Vlans allowed on trunk
-
-10,20,30
-"""
-
-)
-
-
-
-# ==========================
-# 解析処理
-# ==========================
-
-
-if st.button(
-    "分析開始"
+    not st.session_state.finished
 ):
 
 
-    if output.strip() == "":
+    current = (
+
+        info["steps"]
+
+        [st.session_state.step - 1]
+
+    )
 
 
-        st.warning(
-            "コマンド実行結果を入力してください"
-        )
+    layer = current["layer"]
+
+    command = current["command"]
 
 
-    else:
+
+    st.divider()
 
 
-        # --------------------------
-        # show解析
-        # --------------------------
+    st.header(
+        f"{layer} 診断"
+    )
+
+
+
+    st.info(
+        f"確認コマンド：{command}"
+    )
+
+
+
+    # ======================
+    # コマンド単位で入力管理
+    # ======================
+
+    output = st.text_area(
+
+        "コマンド結果",
+
+        height=250,
+
+
+        key=f"input_{command}"
+
+    )
+
+
+
+    if st.button(
+        "分析"
+    ):
+
 
         parsed = analyze_command(
 
@@ -166,13 +246,9 @@ if st.button(
 
 
 
-        # --------------------------
-        # 正常値比較
-        # --------------------------
+        result = check_layer(
 
-        result = check_result(
-
-            command,
+            layer,
 
             parsed
 
@@ -180,79 +256,106 @@ if st.button(
 
 
 
-        # ==========================
-        # 結果表示
-        # ==========================
+        # ======================
+        # 履歴保存
+        # ======================
 
 
-        st.header("5. 診断結果")
+        st.session_state.history.append(
+
+
+            {
+
+                "layer": layer,
+
+                "command": command,
+
+                "error": result["error"],
+
+                "reason": result["reason"]
+
+            }
+
+        )
 
 
 
-        if result["error"] == "none":
+        # ======================
+        # 異常検出
+        # ======================
 
 
-            st.success(
-                "問題は検出されませんでした"
-            )
+        if result["error"] != "none":
 
 
-        else:
+            st.session_state.finished = True
 
 
             st.error(
-                "ネットワーク障害を検出しました"
+                "障害を検出しました"
             )
 
 
+            # ======================
+            # 障害内容
+            # ======================
 
-        col1, col2 = st.columns(2)
-
-
-
-        with col1:
-
-
-            st.subheader("障害情報")
-
-
-            st.write(
-                "Layer：",
-                result["layer"]
+            st.subheader(
+                "障害内容"
             )
 
 
             st.write(
-                "問題：",
                 result["problem"]
             )
 
 
+
+            # ======================
+            # 原因
+            # ======================
+
+
+            st.subheader(
+                "原因"
+            )
+
+
             st.write(
-                "原因：",
                 result["reason"]
             )
 
 
 
-        with col2:
+            # ======================
+            # 復旧
+            # ======================
 
 
-            st.subheader(
-                "復旧コマンド"
+            recovery = get_recovery(
+                result["error"]
             )
 
 
-            recovery_command = get_recovery(
+            st.subheader(
+                "復旧手順"
+            )
 
-                result["error"]
 
+            st.write(
+                recovery["steps"]
+            )
+
+
+
+            st.subheader(
+                "コマンド例"
             )
 
 
             st.code(
 
-                recovery_command,
+                recovery["commands"],
 
                 language="bash"
 
@@ -260,14 +363,104 @@ if st.button(
 
 
 
-# ==========================
-# Footer
-# ==========================
+        # ======================
+        # 正常
+        # ======================
+
+
+        else:
+
+
+            if (
+
+                st.session_state.step
+
+                <
+
+                len(info["steps"])
+
+            ):
+
+
+                st.session_state.step += 1
+
+
+
+            else:
+
+
+                st.session_state.finished = True
+
+
+
+            st.rerun()
+
+
+
+# ======================
+# 全Layer正常
+# ======================
+
+
+if (
+
+    st.session_state.finished
+
+    and
+
+    st.session_state.history
+
+    and
+
+    st.session_state.history[-1]["error"] == "none"
+
+):
+
+
+    st.success(
+
+        "L1 / L2 / L3 の主要設定は正常です"
+
+    )
+
+
+
+    st.info(
+"""
+確認した範囲では問題は検出されませんでした。
+
+その他の原因候補:
+
+- IPアドレス設定ミス
+- Subnet Mask不一致
+- Default Gateway設定ミス
+- Firewall
+- ACL設定
+"""
+    )
+
+
+
+# ======================
+# Reset
+# ======================
 
 
 st.divider()
 
 
-# st.caption(
-#     "Router-on-a-Stick VLAN Troubleshooting Assistant"
-# )
+if st.button(
+    "最初から診断"
+):
+
+
+    st.session_state.step = 0
+
+    st.session_state.problem = None
+
+    st.session_state.history = []
+
+    st.session_state.finished = False
+
+
+    st.rerun()

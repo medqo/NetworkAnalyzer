@@ -1,94 +1,133 @@
 def get_diagnosis(problem):
 
-    table = {
+
+    table={
 
 
-        "同一VLANなのに通信できない":{
-
-            "causes":{
-
-                "L1":[
-                    "Interface shutdown"
-                ],
-
-                "L2":[
-                    "Access VLAN設定ミス",
-                    "VLAN未作成"
-                ]
-
-            },
+"同一VLANなのに通信できない":{
 
 
-            "commands":[
-
-                "show interfaces status",
-
-                "show vlan"
-
-            ]
-
-        },
+"causes":{
 
 
-
-        "異なるVLAN間で通信できない":{
-
-            "causes":{
-
-                "L2":[
-                    "Trunk設定ミス",
-                    "Allowed VLAN不足"
-                ],
-
-                "L3":[
-                    "Subinterface未設定",
-                    "dot1Q設定ミス"
-                ]
-
-            },
+"L1":[
+"ケーブル未接続",
+"Interface shutdown"
+],
 
 
-            "commands":[
+"L2":[
+"VLAN未作成",
+"Access VLAN設定ミス"
+],
 
-                "show interfaces trunk",
 
-                "show running-config",
+"L3":[
+"IPアドレス設定ミス",
+"Subnet Mask不一致"
+]
 
-                "show ip interface brief"
+},
 
-            ]
 
-        },
+"steps":[
+
+{"layer":"L1",
+"command":"show interfaces status"},
+
+{"layer":"L2",
+"command":"show vlan"},
+
+{"layer":"L3",
+"command":"show running-config"}
+
+]
+
+},
 
 
 
-        "Router-on-a-Stickが動作しない":{
+"異なるVLAN間で通信できない":{
 
 
-            "causes":{
-
-                "L2":[
-                    "Trunk未設定"
-                ],
-
-                "L3":[
-                    "encapsulation dot1Q不足"
-                ]
-
-            },
+"causes":{
 
 
-            "commands":[
+"L1":[
+"Interface shutdown"
+],
 
-                "show running-config",
 
-                "show interfaces trunk"
+"L2":[
+"Trunk設定ミス"
+],
 
-            ]
 
-        }
+"L3":[
+"Default Gateway設定ミス",
+"dot1Q設定ミス"
+]
 
-    }
+},
+
+
+"steps":[
+
+{"layer":"L1",
+"command":"show interfaces status"},
+
+{"layer":"L2",
+"command":"show interfaces trunk"},
+
+{"layer":"L3",
+"command":"show running-config"}
+
+]
+
+},
+
+
+
+"Router-on-a-Stickが動作しない":{
+
+
+"causes":{
+
+
+"L1":[
+"Router Interface Down"
+],
+
+
+"L2":[
+"Trunk VLAN設定ミス"
+],
+
+
+"L3":[
+"Subinterface不足",
+"dot1Q不足"
+]
+
+},
+
+
+"steps":[
+
+{"layer":"L1",
+"command":"show interfaces status"},
+
+{"layer":"L2",
+"command":"show interfaces trunk"},
+
+{"layer":"L3",
+"command":"show running-config"}
+
+]
+
+}
+
+}
 
 
     return table[problem]
