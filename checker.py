@@ -1,10 +1,9 @@
-def check_result(command, parsed):
+def check_result(command, result):
 
 
     # L1
 
-    if parsed.get("interface") == "down":
-
+    if result.get("interface_down"):
 
         return {
 
@@ -12,10 +11,29 @@ def check_result(command, parsed):
 
             "layer":"L1",
 
-            "problem":"Interface Down",
+            "problem":
+            "Interface Down",
 
             "reason":
-            "ポートが停止しています"
+            "インターフェースが停止しています"
+
+        }
+
+
+
+    if result.get("shutdown"):
+
+        return {
+
+            "error":"router_down",
+
+            "layer":"L1",
+
+            "problem":
+            "Router Interface Down",
+
+            "reason":
+            "Router側Interfaceがshutdown状態です"
 
         }
 
@@ -23,7 +41,9 @@ def check_result(command, parsed):
 
     # VLAN
 
-    if parsed.get("vlan20_exists") == False:
+    if result.get("vlan10") == False \
+    or result.get("vlan20") == False \
+    or result.get("vlan30") == False:
 
 
         return {
@@ -32,19 +52,19 @@ def check_result(command, parsed):
 
             "layer":"L2",
 
-            "problem":"VLAN Missing",
+            "problem":
+            "VLAN Missing",
 
             "reason":
-            "必要なVLANがありません"
+            "必要なVLAN10/20/30がありません"
 
         }
 
 
 
-
     # Trunk
 
-    if parsed.get("allowed_vlan") == [10]:
+    if result.get("allowed_vlan") == False:
 
 
         return {
@@ -53,52 +73,51 @@ def check_result(command, parsed):
 
             "layer":"L2",
 
-            "problem":"Trunk VLAN Error",
+            "problem":
+            "Trunk VLAN Error",
 
             "reason":
-            "VLAN20が許可されていません"
+            "TrunkでVLAN10/20/30が許可されていません"
 
         }
 
 
 
+    # Router on Stick
 
-    # Route
-
-    if parsed.get("ospf_route") == False:
+    if result.get("subinterface") == False:
 
 
         return {
 
-            "error":"route_missing",
+            "error":"subinterface_error",
 
             "layer":"L3",
 
-            "problem":"Route Missing",
+            "problem":
+            "Subinterface Error",
 
             "reason":
-            "OSPF経路がありません"
+            "VLAN用Subinterfaceが不足しています"
 
         }
 
 
 
-
-    # OSPF
-
-    if parsed.get("neighbor") == False:
+    if result.get("dot1q") == False:
 
 
         return {
 
-            "error":"ospf_error",
+            "error":"dot1q_error",
 
             "layer":"L3",
 
-            "problem":"OSPF Neighbor Error",
+            "problem":
+            "dot1Q Error",
 
             "reason":
-            "Neighbor未形成"
+            "VLANタグ設定が不足しています"
 
         }
 
@@ -108,10 +127,10 @@ def check_result(command, parsed):
 
         "error":"none",
 
-        "layer":"-",
+        "layer":"OK",
 
         "problem":"正常",
 
-        "reason":"問題なし"
+        "reason":"問題は検出されませんでした"
 
     }

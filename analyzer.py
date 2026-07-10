@@ -3,82 +3,109 @@ def analyze_command(command, output):
 
     result = {}
 
+    output_lower = output.lower()
 
 
-    # interface
+
+    # =====================
+    # Interface
+    # =====================
+
 
     if command == "show interfaces status":
 
 
-        if "disabled" in output:
+        result["interface_down"] = (
 
-            result["interface"] = "down"
+            "disabled" in output_lower
+
+            or
+
+            "notconnect" in output_lower
+
+        )
 
 
-        else:
 
-            result["interface"] = "up"
-
-
-
-
+    # =====================
     # VLAN
+    # =====================
+
 
     elif command == "show vlan":
 
 
-        result["vlan20_exists"] = (
+        result["vlan10"] = "10" in output
 
-            "20" in output
+        result["vlan20"] = "20" in output
 
-        )
-
-
+        result["vlan30"] = "30" in output
 
 
+
+    # =====================
     # Trunk
-
-    elif command == "show interfaces switchport":
-
-
-        if "10,20" in output:
-
-            result["allowed_vlan"] = [
-                10,20
-            ]
+    # =====================
 
 
-        else:
-
-            result["allowed_vlan"] = [
-                10
-            ]
+    elif command == "show interfaces trunk":
 
 
+        result["trunk"] = (
+
+            "trunk" in output_lower
+
+        )
 
 
-    # Routing
+        result["allowed_vlan"] = (
 
-    elif command == "show ip route":
-
-
-        result["ospf_route"] = (
-
-            "O " in output
+            "10,20,30" in output.replace(" ","")
 
         )
 
 
 
+    # =====================
+    # Router
+    # =====================
 
-    # OSPF
 
-    elif command == "show ip ospf neighbor":
+    elif command == "show running-config":
 
 
-        result["neighbor"] = (
+        result["subinterface"] = (
 
-            "FULL" in output
+            ".10" in output
+
+            and ".20" in output
+
+            and ".30" in output
+
+        )
+
+
+
+        result["dot1q"] = (
+
+            "dot1Q 10" in output
+
+            and "dot1Q 20" in output
+
+            and "dot1Q 30" in output
+
+        )
+
+
+
+    elif command == "show ip interface brief":
+
+
+        result["shutdown"] = (
+
+            "administratively down"
+
+            in output_lower
 
         )
 

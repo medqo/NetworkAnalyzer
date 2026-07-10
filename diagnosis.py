@@ -1,22 +1,19 @@
 def get_diagnosis(problem):
 
-
-    data = {
-
-
-        "同一VLANなのに通信できない": {
+    table = {
 
 
-            "causes": {
+        "同一VLANなのに通信できない":{
+
+            "causes":{
 
                 "L1":[
-                    "ケーブル未接続",
                     "Interface shutdown"
                 ],
 
                 "L2":[
-                    "VLAN割当ミス",
-                    "Trunk設定ミス"
+                    "Access VLAN設定ミス",
+                    "VLAN未作成"
                 ]
 
             },
@@ -26,9 +23,7 @@ def get_diagnosis(problem):
 
                 "show interfaces status",
 
-                "show vlan",
-
-                "show interfaces switchport"
+                "show vlan"
 
             ]
 
@@ -36,18 +31,18 @@ def get_diagnosis(problem):
 
 
 
-        "遠隔サイトへpingできない":{
-
+        "異なるVLAN間で通信できない":{
 
             "causes":{
 
-                "L1":[
-                    "Router間リンク障害"
+                "L2":[
+                    "Trunk設定ミス",
+                    "Allowed VLAN不足"
                 ],
 
                 "L3":[
-                    "経路未学習",
-                    "Routing設定ミス"
+                    "Subinterface未設定",
+                    "dot1Q設定ミス"
                 ]
 
             },
@@ -55,7 +50,9 @@ def get_diagnosis(problem):
 
             "commands":[
 
-                "show ip route",
+                "show interfaces trunk",
+
+                "show running-config",
 
                 "show ip interface brief"
 
@@ -65,17 +62,17 @@ def get_diagnosis(problem):
 
 
 
-        "OSPF neighborが出ない":{
+        "Router-on-a-Stickが動作しない":{
 
 
             "causes":{
 
+                "L2":[
+                    "Trunk未設定"
+                ],
+
                 "L3":[
-
-                    "Area不一致",
-
-                    "network設定不足"
-
+                    "encapsulation dot1Q不足"
                 ]
 
             },
@@ -83,16 +80,15 @@ def get_diagnosis(problem):
 
             "commands":[
 
-                "show ip ospf neighbor",
+                "show running-config",
 
-                "show running-config"
+                "show interfaces trunk"
 
             ]
 
         }
 
-
     }
 
 
-    return data[problem]
+    return table[problem]

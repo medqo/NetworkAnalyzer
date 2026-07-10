@@ -7,55 +7,68 @@ def get_recovery(error):
         "interface_down":
 
 """
-interface gi0/1
+interface fa0/x
  no shutdown
 """,
+
+
+
+        "router_down":
+
+"""
+interface gig0/0/0
+
+no shutdown
+""",
+
 
 
         "vlan_missing":
 
 """
+vlan 10
 vlan 20
- name VLAN20
+vlan 30
 """,
+
 
 
         "trunk_error":
 
 """
-interface gi0/1
+interface fa0/7
 
 switchport mode trunk
 
-switchport trunk allowed vlan 10,20
+switchport trunk allowed vlan 10,20,30
 """,
 
 
 
-        "route_missing":
+        "subinterface_error":
 
 """
-router ospf 1
+interface gig0/0/0.10
 
-network 192.168.0.0 0.0.255.255 area 0
+encapsulation dot1Q 10
+
+ip address 192.168.10.254 255.255.255.0
 """,
 
 
 
-        "ospf_error":
+        "dot1q_error":
 
 """
-show running-config
+interface gig0/0/0.10
 
-OSPF area と network設定を確認
+encapsulation dot1Q 10
 """
-
 
     }
 
 
-
     return recovery.get(
         error,
-        "No recovery needed"
+        "修正不要"
     )
