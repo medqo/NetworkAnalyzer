@@ -12,44 +12,38 @@ st.set_page_config(
 )
 
 
-st.title(
-    "ネットワーク診断アシスタント"
-)
+st.title("ネットワーク診断アシスタント")
 
 
 st.write(
 """
-症状を選択し、OSI参照モデルに基づいて
-L1 → L2 → L3 の順番で障害を切り分けます。
+症状からOSI参照モデルに基づいて
+L1 → L2 → L3 の順に障害を切り分けます。
 """
 )
 
 
-
-# ======================
+# =====================
 # Session
-# ======================
+# =====================
 
 if "step" not in st.session_state:
     st.session_state.step = 0
 
-
 if "problem" not in st.session_state:
     st.session_state.problem = None
 
-
 if "history" not in st.session_state:
     st.session_state.history = []
-
 
 if "finished" not in st.session_state:
     st.session_state.finished = False
 
 
 
-# ======================
+# =====================
 # 症状選択
-# ======================
+# =====================
 
 if st.session_state.step == 0:
 
@@ -59,44 +53,52 @@ if st.session_state.step == 0:
         "発生している症状",
 
         [
-            "同一VLANなのに通信できない",
 
-            "異なるVLAN間で通信できない",
+        "同じVLAN内の端末同士で通信できない",
 
-            "Router-on-a-Stickが動作しない"
+        "異なるVLAN間で通信できない",
+
+        "特定のVLANだけ通信できない",
+
+        "Router-on-a-Stickが動作しない",
+
+        "Default Gatewayへpingできない"
+
         ]
 
     )
 
 
-
-    if st.button(
-        "診断開始"
-    ):
+    if st.button("診断開始"):
 
 
         st.session_state.problem = problem
-
         st.session_state.step = 1
-
         st.session_state.history = []
-
         st.session_state.finished = False
-
 
         st.rerun()
 
 
 
-# ======================
-# 原因候補表示
-# ======================
-
+# =====================
+# 症状・原因表示
+# =====================
 
 if st.session_state.problem:
 
 
     info = get_diagnosis(
+        st.session_state.problem
+    )
+
+
+    st.subheader(
+        "発生している症状"
+    )
+
+
+    st.info(
         st.session_state.problem
     )
 
@@ -110,45 +112,34 @@ if st.session_state.problem:
 
 
     for i, layer in enumerate(
-        ["L1", "L2", "L3"]
+        ["L1","L2","L3"]
     ):
 
 
         with cols[i]:
 
-
-            st.write(
-                f"### {layer}"
-            )
+            st.write(f"### {layer}")
 
 
-            for cause in info["causes"][layer]:
+            for c in info["causes"][layer]:
+
+                st.write("- " + c)
 
 
-                st.write(
-                    "- " + cause
-                )
-
-
-
-# ======================
+# =====================
 # 診断履歴
-# ======================
-
+# =====================
 
 if st.session_state.history:
 
 
-    st.subheader(
-        "診断履歴"
-    )
+    st.subheader("診断履歴")
 
 
     for h in st.session_state.history:
 
 
         if h["error"] == "none":
-
 
             st.success(
                 f'{h["layer"]} 正常'
@@ -157,49 +148,38 @@ if st.session_state.history:
 
         else:
 
-
             st.error(
                 f'{h["layer"]} 異常'
             )
 
 
         st.write(
-            "結果:",
             h["reason"]
         )
 
 
-
-# ======================
-# 現在Layer診断
-# ======================
-
+# =====================
+# 診断
+# =====================
 
 if (
     st.session_state.step > 0
-
     and
-
     not st.session_state.finished
 ):
 
 
-    current = (
-
-        info["steps"]
-
-        [st.session_state.step - 1]
-
-    )
+    current = info["steps"][
+        st.session_state.step - 1
+    ]
 
 
     layer = current["layer"]
 
+    device = current["device"]
+
     command = current["command"]
 
-
-
-    st.divider()
 
 
     st.header(
@@ -207,23 +187,25 @@ if (
     )
 
 
-
     st.info(
-        f"確認コマンド：{command}"
+f"""
+確認対象機器：
+
+{device}
+
+確認コマンド：
+
+{command}
+"""
     )
 
 
 
-    # ======================
-    # コマンド単位で入力管理
-    # ======================
-
     output = st.text_area(
 
-        "コマンド結果",
+        "コマンド実行結果",
 
         height=250,
-
 
         key=f"input_{command}"
 
@@ -231,58 +213,31 @@ if (
 
 
 
-    if st.button(
-        "分析"
-    ):
+    if st.button("分析"):
 
 
         parsed = analyze_command(
-
             command,
-
             output
-
         )
-
 
 
         result = check_layer(
-
             layer,
-
             parsed
-
         )
-
-
-
-        # ======================
-        # 履歴保存
-        # ======================
 
 
         st.session_state.history.append(
 
-
-            {
-
-                "layer": layer,
-
-                "command": command,
-
-                "error": result["error"],
-
-                "reason": result["reason"]
-
-            }
+        {
+        "layer":layer,
+        "error":result["error"],
+        "reason":result["reason"]
+        }
 
         )
 
-
-
-        # ======================
-        # 異常検出
-        # ======================
 
 
         if result["error"] != "none":
@@ -296,40 +251,22 @@ if (
             )
 
 
-            # ======================
-            # 障害内容
-            # ======================
-
             st.subheader(
                 "障害内容"
             )
-
 
             st.write(
                 result["problem"]
             )
 
 
-
-            # ======================
-            # 原因
-            # ======================
-
-
             st.subheader(
                 "原因"
             )
 
-
             st.write(
                 result["reason"]
             )
-
-
-
-            # ======================
-            # 復旧
-            # ======================
 
 
             recovery = get_recovery(
@@ -341,11 +278,9 @@ if (
                 "復旧手順"
             )
 
-
             st.write(
                 recovery["steps"]
             )
-
 
 
             st.subheader(
@@ -354,52 +289,31 @@ if (
 
 
             st.code(
-
                 recovery["commands"],
-
                 language="bash"
-
             )
 
-
-
-        # ======================
-        # 正常
-        # ======================
 
 
         else:
 
 
-            if (
-
-                st.session_state.step
-
-                <
-
-                len(info["steps"])
-
-            ):
-
+            if st.session_state.step < len(info["steps"]):
 
                 st.session_state.step += 1
 
 
-
             else:
 
-
                 st.session_state.finished = True
-
 
 
             st.rerun()
 
 
-
-# ======================
-# 全Layer正常
-# ======================
+# =====================
+# 全Layer正常時
+# =====================
 
 
 if (
@@ -424,43 +338,77 @@ if (
     )
 
 
+    st.subheader(
+        "確認済み項目"
+    )
 
-    st.info(
+
+    st.write(
 """
-確認した範囲では問題は検出されませんでした。
+✓ Interface状態
 
-その他の原因候補:
+✓ VLAN設定
 
-- IPアドレス設定ミス
-- Subnet Mask不一致
-- Default Gateway設定ミス
-- Firewall
-- ACL設定
+✓ Trunk設定
+
+✓ Router Subinterface設定
+
+✓ IEEE802.1Q設定
 """
     )
 
 
 
-# ======================
-# Reset
-# ======================
+    st.subheader(
+        "その他の原因候補"
+    )
 
+
+    st.warning(
+"""
+以下の設定を確認してください。
+
+
+【端末設定】
+
+・IP Address設定ミス
+
+・Subnet Mask不一致
+
+・Default Gateway設定ミス
+
+
+
+【通信制御】
+
+・ACL設定による通信遮断
+
+・Firewall設定
+
+
+
+【その他】
+
+・設定保存忘れ
+
+・想定外の物理障害
+
+・機器故障
+"""
+    )
+
+# =====================
+# Reset
+# =====================
 
 st.divider()
 
-
-if st.button(
-    "最初から診断"
-):
+if st.button("最初から診断"):
 
 
     st.session_state.step = 0
-
     st.session_state.problem = None
-
     st.session_state.history = []
-
     st.session_state.finished = False
-
 
     st.rerun()

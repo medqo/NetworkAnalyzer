@@ -1,9 +1,11 @@
 def check_layer(layer, result):
 
 
-    # =====================
-    # Layer1
-    # =====================
+    # ==========================
+    # L1
+    # Interface確認
+    # ==========================
+
 
     if layer == "L1":
 
@@ -13,25 +15,30 @@ def check_layer(layer, result):
 
             return {
 
-                "error":"interface",
+                "error":
+                "interface_down",
 
                 "problem":
                 "Interface Down",
 
                 "reason":
-                "Interfaceがshutdown状態、またはリンクがDownしています"
+                "Interfaceがshutdown状態、または物理リンクがDownしています"
 
             }
 
 
 
-    # =====================
-    # Layer2
-    # =====================
+    # ==========================
+    # L2
+    # VLAN / Trunk
+    # ==========================
 
 
     elif layer == "L2":
 
+
+
+        # VLAN確認
 
         if "vlan_ok" in result:
 
@@ -45,7 +52,7 @@ def check_layer(layer, result):
                     "vlan_missing",
 
                     "problem":
-                    "VLAN Missing",
+                    "VLAN設定エラー",
 
                     "reason":
                     "必要なVLANが作成されていません"
@@ -53,6 +60,8 @@ def check_layer(layer, result):
                 }
 
 
+
+        # Trunk確認
 
         if "trunk_ok" in result:
 
@@ -63,7 +72,7 @@ def check_layer(layer, result):
                 return {
 
                     "error":
-                    "trunk_allowed_error",
+                    "trunk_error",
 
                     "problem":
                     "Trunk VLAN Error",
@@ -75,13 +84,18 @@ def check_layer(layer, result):
 
 
 
-    # =====================
-    # Layer3
-    # =====================
+
+    # ==========================
+    # L3
+    # Router / PC
+    # ==========================
 
 
     elif layer == "L3":
 
+
+
+        # Subinterface確認
 
         if "subinterface_ok" in result:
 
@@ -98,11 +112,13 @@ def check_layer(layer, result):
                     "Subinterface Error",
 
                     "reason":
-                    "RouterのSubinterface設定が不足しています"
+                    "RouterのVLAN用Subinterfaceが不足しています"
 
                 }
 
 
+
+        # dot1Q確認
 
         if "dot1q_ok" in result:
 
@@ -119,18 +135,49 @@ def check_layer(layer, result):
                     "IEEE802.1Q Error",
 
                     "reason":
-                    "dot1Q設定が不足しています"
+                    "SubinterfaceにVLANタグ(dot1Q)設定がありません"
 
                 }
 
 
 
+        # Default Gateway確認
+
+        if "ip_ok" in result:
+
+
+            if result["ip_ok"] == False:
+
+
+                return {
+
+                    "error":
+                    "gateway_error",
+
+                    "problem":
+                    "Default Gateway Error",
+
+                    "reason":
+                    "PCのDefault Gateway設定が不足しています"
+
+                }
+
+
+
+    # ==========================
+    # 正常
+    # ==========================
+
+
     return {
 
-        "error":"none",
+        "error":
+        "none",
 
-        "problem":"なし",
+        "problem":
+        "なし",
 
-        "reason":"正常です"
+        "reason":
+        "正常です"
 
     }

@@ -1,133 +1,358 @@
 def get_diagnosis(problem):
 
 
-    table={
+    common_l1 = [
 
+        "ケーブル未接続",
 
-"同一VLANなのに通信できない":{
+        "Interface shutdown"
 
-
-"causes":{
-
-
-"L1":[
-"ケーブル未接続",
-"Interface shutdown"
-],
-
-
-"L2":[
-"VLAN未作成",
-"Access VLAN設定ミス"
-],
-
-
-"L3":[
-"IPアドレス設定ミス",
-"Subnet Mask不一致"
-]
-
-},
-
-
-"steps":[
-
-{"layer":"L1",
-"command":"show interfaces status"},
-
-{"layer":"L2",
-"command":"show vlan"},
-
-{"layer":"L3",
-"command":"show running-config"}
-
-]
-
-},
+    ]
 
 
 
-"異なるVLAN間で通信できない":{
+    table = {
 
 
-"causes":{
+    # ==========================
+    # 同一VLAN通信不可
+    # ==========================
 
 
-"L1":[
-"Interface shutdown"
-],
+    "同じVLAN内の端末同士で通信できない":{
 
 
-"L2":[
-"Trunk設定ミス"
-],
+        "causes":{
 
 
-"L3":[
-"Default Gateway設定ミス",
-"dot1Q設定ミス"
-]
-
-},
+            "L1": common_l1,
 
 
-"steps":[
+            "L2":[
 
-{"layer":"L1",
-"command":"show interfaces status"},
+                "VLAN未作成",
 
-{"layer":"L2",
-"command":"show interfaces trunk"},
+                "Access VLAN割当ミス"
 
-{"layer":"L3",
-"command":"show running-config"}
-
-]
-
-},
+            ],
 
 
+            "L3":[
 
-"Router-on-a-Stickが動作しない":{
+                "IP Address設定ミス",
 
+                "Subnet Mask不一致"
 
-"causes":{
+            ]
 
-
-"L1":[
-"Router Interface Down"
-],
-
-
-"L2":[
-"Trunk VLAN設定ミス"
-],
+        },
 
 
-"L3":[
-"Subinterface不足",
-"dot1Q不足"
-]
-
-},
+        "steps":[
 
 
-"steps":[
+            {
+                "layer":"L1",
 
-{"layer":"L1",
-"command":"show interfaces status"},
+                "device":"接続先Switch",
 
-{"layer":"L2",
-"command":"show interfaces trunk"},
+                "command":"show interfaces status"
+            },
 
-{"layer":"L3",
-"command":"show running-config"}
 
-]
+            {
+                "layer":"L2",
 
-}
+                "device":"SW1 / SW2",
 
-}
+                "command":"show vlan"
+            },
+
+
+            {
+                "layer":"L3",
+
+                "device":"PC",
+
+                "command":"ipconfig"
+            }
+
+        ]
+
+    },
+
+
+
+    # ==========================
+    # VLAN間通信不可
+    # ==========================
+
+
+    "異なるVLAN間で通信できない":{
+
+
+        "causes":{
+
+
+            "L1":common_l1,
+
+
+            "L2":[
+
+                "Trunk設定ミス",
+
+                "allowed VLAN不足"
+
+            ],
+
+
+            "L3":[
+
+                "Router Subinterface不足",
+
+                "IEEE802.1Q設定不足"
+
+            ]
+
+        },
+
+
+        "steps":[
+
+
+            {
+                "layer":"L1",
+
+                "device":"SW1",
+
+                "command":"show interfaces status"
+            },
+
+
+            {
+                "layer":"L2",
+
+                "device":"SW1",
+
+                "command":"show interfaces trunk"
+            },
+
+
+            {
+                "layer":"L3",
+
+                "device":"R1",
+
+                "command":"show running-config"
+            }
+
+        ]
+
+    },
+
+
+
+    # ==========================
+    # 特定VLANのみ不可
+    # ==========================
+
+
+    "特定のVLANだけ通信できない":{
+
+
+        "causes":{
+
+
+            "L1":common_l1,
+
+
+            "L2":[
+
+                "VLAN未作成",
+
+                "Trunk許可漏れ"
+
+            ],
+
+
+            "L3":[
+
+                "対象VLANのSubinterface不足"
+
+            ]
+
+        },
+
+
+        "steps":[
+
+
+            {
+                "layer":"L1",
+
+                "device":"SW1",
+
+                "command":"show interfaces status"
+            },
+
+
+            {
+                "layer":"L2",
+
+                "device":"SW1",
+
+                "command":"show interfaces trunk"
+            },
+
+
+            {
+                "layer":"L3",
+
+                "device":"R1",
+
+                "command":"show running-config"
+            }
+
+        ]
+
+    },
+
+
+
+    # ==========================
+    # Router-on-a-Stick
+    # ==========================
+
+
+    "Router-on-a-Stickが動作しない":{
+
+
+        "causes":{
+
+
+            "L1":common_l1,
+
+
+            "L2":[
+
+                "Trunk未設定",
+
+                "allowed VLAN不足"
+
+            ],
+
+
+            "L3":[
+
+                "Subinterface不足",
+
+                "dot1Q設定不足"
+
+            ]
+
+        },
+
+
+        "steps":[
+
+
+            {
+                "layer":"L1",
+
+                "device":"SW1",
+
+                "command":"show interfaces status"
+            },
+
+
+            {
+                "layer":"L2",
+
+                "device":"SW1",
+
+                "command":"show interfaces trunk"
+            },
+
+
+            {
+                "layer":"L3",
+
+                "device":"R1",
+
+                "command":"show running-config"
+            }
+
+        ]
+
+    },
+
+
+
+    # ==========================
+    # Gateway
+    # ==========================
+
+
+    "Default Gatewayへpingできない":{
+
+
+        "causes":{
+
+
+            "L1":common_l1,
+
+
+            "L2":[
+
+                "VLAN割当ミス"
+
+            ],
+
+
+            "L3":[
+
+                "Default Gateway設定ミス"
+
+            ]
+
+        },
+
+
+        "steps":[
+
+
+            {
+                "layer":"L1",
+
+                "device":"SW1",
+
+                "command":"show interfaces status"
+            },
+
+
+            {
+                "layer":"L2",
+
+                "device":"SW1",
+
+                "command":"show vlan"
+            },
+
+
+            {
+                "layer":"L3",
+
+                "device":"PC",
+
+                "command":"ipconfig"
+            }
+
+        ]
+
+    }
+
+
+    }
 
 
     return table[problem]

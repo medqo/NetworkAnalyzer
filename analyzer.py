@@ -3,33 +3,111 @@ def analyze_command(command, output):
 
     result = {}
 
-    # 全て小文字化
+
     text = output.lower()
 
 
 
-    # =====================
+    # ======================
     # L1
-    # =====================
+    # ======================
+
 
     if command == "show interfaces status":
 
 
-        result["interface_ok"] = (
+        # 正しいポート割当
 
-            "disabled" not in text
+        expected_vlan = {
 
-            and
+            "fa0/1": "10",
 
-            "notconnect" not in text
+            "fa0/2": "10",
 
-        )
+            "fa0/3": "20",
+
+            "fa0/4": "20",
+
+            "fa0/5": "30",
+
+            "fa0/6": "30",
+
+            "fa0/7": "trunk",
+
+            "fa0/8": "trunk"
+
+        }
+
+
+        interface_ok = True
+
+        vlan_assign_ok = True
 
 
 
-    # =====================
-    # L2 VLAN
-    # =====================
+        for line in text.splitlines():
+
+
+            cols = line.split()
+
+
+            if len(cols) < 3:
+
+                continue
+
+
+
+            port = cols[0]
+
+            status = cols[1]
+
+            vlan = cols[2]
+
+
+
+            # 管理対象ポートのみ確認
+
+            if port in expected_vlan:
+
+
+
+                # =================
+                # L1確認
+                # =================
+
+
+                if status != "connected":
+
+
+                    interface_ok = False
+
+
+
+
+                # =================
+                # VLAN確認
+                # =================
+
+
+                if vlan != expected_vlan[port]:
+
+
+                    vlan_assign_ok = False
+
+
+
+
+        result["interface_ok"] = interface_ok
+
+
+        result["vlan_assign_ok"] = vlan_assign_ok
+
+
+
+    # ======================
+    # VLAN
+    # ======================
+
 
     elif command == "show vlan":
 
@@ -50,26 +128,34 @@ def analyze_command(command, output):
 
 
 
-    # =====================
-    # L2 Trunk
-    # =====================
+    # ======================
+    # Trunk
+    # ======================
+
 
     elif command == "show interfaces trunk":
+
+
+        trunk_text = text.replace(
+            " ",
+            ""
+        )
 
 
         result["trunk_ok"] = (
 
             "10,20,30"
 
-            in text.replace(" ","")
+            in trunk_text
 
         )
 
 
 
-    # =====================
-    # L3 Router
-    # =====================
+    # ======================
+    # Router
+    # ======================
+
 
     elif command == "show running-config":
 
