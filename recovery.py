@@ -1,298 +1,274 @@
-def get_recovery(error):
+def get_recovery(error, details=None):
 
 
-    recovery = {
+    # VLANごとのGateway
+    gateways = {
+
+        10:
+        "192.168.10.254",
+
+        20:
+        "192.168.20.254",
+
+        30:
+        "192.168.30.254"
+    }
 
 
+    # ==========================================
+    # L1
+    # ==========================================
 
-# ======================
-# L1
-# ======================
+    if error == "interface_down":
 
+        return {
 
-"interface_down":{
-
-
-"steps":
+            "steps":
 """
-1. 対象Interfaceを確認する
-2. Interface設定モードへ移行する
-3. shutdown状態を解除する
-4. 状態を再確認する
+1. ケーブル接続を確認する
+2. 使用するInterfaceを確認する
+3. shutdown状態の場合はInterfaceを有効化する
+4. Interface状態を再確認する
 """,
 
-
-"commands":
+            "commands":
 """
 enable
-
 configure terminal
 
-
 interface FastEthernet0/1
-
 no shutdown
 
-
 end
-
 
 show interfaces status
 """
-
-},
-
+        }
 
 
-# ======================
-# VLAN
-# ======================
+    # ==========================================
+    # VLAN
+    # ==========================================
+
+    elif error == "vlan_missing":
+
+        commands = []
 
 
-"vlan_missing":{
+        for vlan in details or []:
 
-
-"steps":
+            commands.append(
+f"""
+vlan {vlan}
+name VLAN{vlan}
 """
-1. VLAN設定モードへ移行する
-2. 不足しているVLANを作成する
-3. VLAN一覧を確認する
+            )
+
+
+        return {
+
+            "steps":
+"""
+1. 不足しているVLANを確認する
+2. VLANを作成する
+3. VLAN一覧を再確認する
 """,
 
-
-"commands":
+            "commands":
 """
 enable
-
 configure terminal
 
-
-vlan 10
-name VLAN10
-
-
-vlan 20
-name VLAN20
-
-
-vlan 30
-name VLAN30
-
+""" + "\n".join(commands) + """
 
 end
-
 
 show vlan
 """
-
-},
-
+        }
 
 
+    # ==========================================
+    # Trunk
+    # ==========================================
 
-# ======================
-# Trunk
-# ======================
+    elif error == "trunk_error":
 
+        return {
 
-"trunk_error":{
-
-
-"steps":
+            "steps":
 """
 1. Trunk Interfaceを確認する
-2. Interface設定モードへ移行する
-3. Trunkモードを設定する
-4. VLAN10/20/30を許可する
-5. 設定状態を確認する
+2. Trunkモードを設定する
+3. VLAN10、20、30を許可する
+4. Trunk状態を再確認する
 """,
 
-
-"commands":
+            "commands":
 """
 enable
-
 configure terminal
-
 
 interface FastEthernet0/7
 
-
 switchport mode trunk
-
-
 switchport trunk allowed vlan 10,20,30
 
-
 end
-
 
 show interfaces trunk
 """
-
-},
-
+        }
 
 
+    # ==========================================
+    # Subinterface不足
+    # ==========================================
 
-# ======================
-# Subinterface
-# ======================
+    elif error == "subinterface_missing":
+
+        commands = []
 
 
-"subinterface_missing":{
+        for vlan in details or []:
+
+            gateway = gateways.get(
+                vlan
+            )
 
 
-"steps":
+            commands.append(
+f"""
+interface GigabitEthernet0/0/0.{vlan}
+encapsulation dot1Q {vlan}
+ip address {gateway} 255.255.255.0
 """
-1. Router設定モードへ移行する
-2. 不足しているSubinterfaceを作成する
-3. VLANタグ(dot1Q)を設定する
+            )
+
+
+        return {
+
+            "steps":
+"""
+1. 不足しているSubinterfaceを確認する
+2. Subinterfaceを作成する
+3. dot1Qを設定する
 4. Gateway用IPアドレスを設定する
-5. 設定を確認する
+5. Interface状態を再確認する
 """,
 
-
-"commands":
+            "commands":
 """
 enable
-
 configure terminal
 
+""" + "\n".join(commands) + """
 
-interface GigabitEthernet0/0/0.30
+end
+
+show ip interface brief
+"""
+        }
 
 
-encapsulation dot1Q 30
+    # ==========================================
+    # dot1Q不足
+    # ==========================================
+
+    elif error == "dot1q_missing":
+
+        commands = []
 
 
-ip address 192.168.30.254 255.255.255.0
+        for vlan in details or []:
+
+            commands.append(
+f"""
+interface GigabitEthernet0/0/0.{vlan}
+encapsulation dot1Q {vlan}
+"""
+            )
 
 
+        return {
+
+            "steps":
+"""
+1. dot1Q設定が不足しているSubinterfaceを確認する
+2. 対象Subinterfaceへ移動する
+3. 正しいVLAN IDを設定する
+4. 設定を再確認する
+""",
+
+            "commands":
+"""
+enable
+configure terminal
+
+""" + "\n".join(commands) + """
+
+end
+
+show running-config
+"""
+        }
+
+
+    # ==========================================
+    # Subinterface Down
+    # ==========================================
+
+    elif error == "subinterface_down":
+
+        commands = []
+
+
+        for vlan in details or []:
+
+            commands.append(
+f"""
+interface GigabitEthernet0/0/0.{vlan}
+no shutdown
+"""
+            )
+
+
+        return {
+
+            "steps":
+"""
+1. DownしているSubinterfaceを確認する
+2. 対象Subinterfaceを有効化する
+3. 親Interfaceの状態も確認する
+4. Interface状態を再確認する
+""",
+
+            "commands":
+"""
+enable
+configure terminal
+
+""" + "\n".join(commands) + """
+
+interface GigabitEthernet0/0/0
 no shutdown
 
-
 end
 
-
-show running-config
+show ip interface brief
 """
-
-},
-
+        }
 
 
+    # ==========================================
+    # 正常
+    # ==========================================
 
-# ======================
-# dot1Q
-# ======================
-
-
-"dot1q_missing":{
-
-
-"steps":
-"""
-1. 対象Subinterfaceを確認する
-2. Subinterface設定へ移動する
-3. VLANタグ(dot1Q)を設定する
-4. 設定を確認する
-""",
-
-
-"commands":
-"""
-enable
-
-configure terminal
-
-
-interface GigabitEthernet0/0/0.30
-
-
-encapsulation dot1Q 30
-
-
-end
-
-
-show running-config
-"""
-
-},
-
-
-
-
-# ======================
-# Gateway
-# ======================
-
-
-"gateway_error":{
-
-
-"steps":
-"""
-1. PCのIP設定画面を開く
-2. 所属VLANを確認する
-3. 正しいDefault Gatewayを設定する
-4. pingで疎通確認する
-""",
-
-
-"commands":
-"""
-Packet Tracer PC:
-
-Desktop
-
-↓
-
-IP Configuration
-
-
-設定例:
-
-VLAN10:
-Default Gateway
-192.168.10.254
-
-
-VLAN20:
-Default Gateway
-192.168.20.254
-
-
-VLAN30:
-Default Gateway
-192.168.30.254
-
-
-確認:
-
-ping <宛先IP>
-"""
-
-}
-
-
-}
-
-
-
-    return recovery.get(
-
-        error,
-
-        {
+    return {
 
         "steps":
         "復旧作業は不要です",
 
         "commands":
         ""
-
-        }
-
-    )
+    }

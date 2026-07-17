@@ -1,210 +1,308 @@
-def analyze_command(command, output):
+import re
 
+from expected_config import EXPECTED
+
+
+def analyze_command(command, output):
 
     result = {}
 
-
+    # 大文字・小文字を統一
     text = output.lower()
 
 
-
-    # ======================
+    # ==========================================
     # L1
-    # ======================
-
+    # show interfaces status
+    # ==========================================
 
     if command == "show interfaces status":
 
-
-        # 正しいポート割当
-
-        expected_vlan = {
-
-            "fa0/1": "10",
-
-            "fa0/2": "10",
-
-            "fa0/3": "20",
-
-            "fa0/4": "20",
-
-            "fa0/5": "30",
-
-            "fa0/6": "30",
-
-            "fa0/7": "trunk",
-
-            "fa0/8": "trunk"
-
-        }
-
-
-        interface_ok = True
-
-        vlan_assign_ok = True
-
+        connected_ports = []
 
 
         for line in text.splitlines():
 
+            columns = line.split()
 
-            cols = line.split()
 
-
-            if len(cols) < 3:
+            if len(columns) < 2:
 
                 continue
 
 
+            port = columns[0]
 
-            port = cols[0]
-
-            status = cols[1]
-
-            vlan = cols[2]
+            status = columns[1]
 
 
+            # Interface行のみ対象
+            if (
+                port.startswith("fa")
+                or
+                port.startswith("gi")
+            ):
 
-            # 管理対象ポートのみ確認
+                if status == "connected":
 
-            if port in expected_vlan:
-
-
-
-                # =================
-                # L1確認
-                # =================
-
-
-                if status != "connected":
-
-
-                    interface_ok = False
+                    connected_ports.append(
+                        port
+                    )
 
 
+        result["interface_ok"] = (
+            len(connected_ports) > 0
+        )
 
 
-                # =================
-                # VLAN確認
-                # =================
-
-
-                if vlan != expected_vlan[port]:
-
-
-                    vlan_assign_ok = False
-
-
-
-
-        result["interface_ok"] = interface_ok
-
-
-        result["vlan_assign_ok"] = vlan_assign_ok
-
-
-
-    # ======================
-    # VLAN
-    # ======================
-
+    # ==========================================
+    # L2-1
+    # show vlan
+    # ==========================================
 
     elif command == "show vlan":
 
+        found_vlans = []
+
+
+        for vlan in EXPECTED["VLANS"]:
+
+            pattern = (
+                rf"^\s*{vlan}\s+"
+            )
+
+
+            if re.search(
+                pattern,
+                text,
+                re.MULTILINE
+            ):
+
+                found_vlans.append(
+                    vlan
+                )
+
+
+        missing_vlans = [
+
+            vlan
+
+            for vlan in EXPECTED["VLANS"]
+
+            if vlan not in found_vlans
+        ]
+
 
         result["vlan_ok"] = (
-
-            "10" in text
-
-            and
-
-            "20" in text
-
-            and
-
-            "30" in text
-
+            len(missing_vlans) == 0
         )
 
 
+        result["missing_vlans"] = (
+            missing_vlans
+        )
 
-    # ======================
-    # Trunk
-    # ======================
 
+    # ==========================================
+    # L2-2
+    # show interfaces trunk
+    # ==========================================
 
     elif command == "show interfaces trunk":
 
-
-        trunk_text = text.replace(
-            " ",
-            ""
+        # Trunk Interfaceの存在確認
+        trunk_exists = (
+            "trunking" in text
+            or
+            "trunk" in text
         )
+
+
+        missing_vlans = []
+
+
+        # VLAN許可リストを確認
+        for vlan in EXPECTED["TRUNK_ALLOWED"]:
+
+            vlan_pattern = (
+                rf"\b{vlan}\b"
+            )
+
+
+            if not re.search(
+                vlan_pattern,
+                text
+            ):
+
+                missing_vlans.append(
+                    vlan
+                )
 
 
         result["trunk_ok"] = (
 
-            "10,20,30"
+            trunk_exists
 
-            in trunk_text
+            and
+
+            len(missing_vlans) == 0
 
         )
 
 
+        result["missing_trunk_vlans"] = (
+            missing_vlans
+        )
 
-    # ======================
-    # Router
-    # ======================
 
+    # ==========================================
+    # L3-1
+    # show running-config
+    # ==========================================
 
     elif command == "show running-config":
 
+        missing_subinterfaces = []
+
+        missing_dot1q = []
+
+
+        # Subinterface確認
+        for vlan in EXPECTED["SUBINTERFACES"]:
+
+            interface_pattern = (
+                rf"^interface\s+\S+\.{vlan}\s*$"
+            )
+
+
+            if not re.search(
+                interface_pattern,
+                text,
+                re.MULTILINE
+            ):
+
+                missing_subinterfaces.append(
+                    vlan
+                )
+
+
+        # dot1Q確認
+        for vlan in EXPECTED["DOT1Q"]:
+
+            dot1q_pattern = (
+                rf"^\s*encapsulation\s+dot1q\s+{vlan}\s*$"
+            )
+
+
+            if not re.search(
+                dot1q_pattern,
+                text,
+                re.MULTILINE
+            ):
+
+                missing_dot1q.append(
+                    vlan
+                )
+
 
         result["subinterface_ok"] = (
-
-            ".10" in text
-
-            and
-
-            ".20" in text
-
-            and
-
-            ".30" in text
-
+            len(missing_subinterfaces) == 0
         )
-
 
 
         result["dot1q_ok"] = (
-
-            "dot1q 10" in text
-
-            and
-
-            "dot1q 20" in text
-
-            and
-
-            "dot1q 30" in text
-
+            len(missing_dot1q) == 0
         )
 
 
-
-    # =====================
-    # PC
-    # =====================
-
-    elif command == "ipconfig":
+        result["missing_subinterfaces"] = (
+            missing_subinterfaces
+        )
 
 
-        result["ip_ok"] = (
+        result["missing_dot1q"] = (
+            missing_dot1q
+        )
 
-            "default gateway"
 
-            in text
+    # ==========================================
+    # L3-2
+    # show ip interface brief
+    # ==========================================
 
+    elif command == "show ip interface brief":
+
+        down_subinterfaces = []
+
+        missing_subinterfaces = []
+
+
+        for vlan in EXPECTED["SUBINTERFACES"]:
+
+            # VLAN番号に対応する行を検索
+            pattern = (
+                rf"^\S+\.{vlan}\s+.*$"
+            )
+
+
+            match = re.search(
+                pattern,
+                text,
+                re.MULTILINE
+            )
+
+
+            # 行そのものが存在しない
+            if not match:
+
+                missing_subinterfaces.append(
+                    vlan
+                )
+
+                continue
+
+
+            line = match.group(0)
+
+            columns = line.split()
+
+
+            # 最後の2列が Status / Protocol
+            if len(columns) >= 2:
+
+                status = columns[-2]
+
+                protocol = columns[-1]
+
+
+                if not (
+                    status == "up"
+                    and
+                    protocol == "up"
+                ):
+
+                    down_subinterfaces.append(
+                        vlan
+                    )
+
+
+        result["subinterface_status_ok"] = (
+
+            len(down_subinterfaces) == 0
+
+            and
+
+            len(missing_subinterfaces) == 0
+        )
+
+
+        result["down_subinterfaces"] = (
+            down_subinterfaces
+        )
+
+
+        result["missing_status_subinterfaces"] = (
+            missing_subinterfaces
         )
 
 

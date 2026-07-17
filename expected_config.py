@@ -1,28 +1,30 @@
 EXPECTED = {
 
-
-    "VLAN":[
+    # 必要なVLAN
+    "VLANS": [
         10,
         20,
         30
     ],
 
-
-    "TRUNK_ALLOWED":[
+    # Trunkで許可されるべきVLAN
+    "TRUNK_ALLOWED": [
         10,
         20,
         30
     ],
 
+    # 必要なSubinterface
+    "SUBINTERFACES": [
+        10,
+        20,
+        30
+    ],
 
-    "SUBINTERFACE":[
-
-        "Gig0/0/0.10",
-
-        "Gig0/0/0.20",
-
-        "Gig0/0/0.30"
-
+    # 必要なdot1Q設定
+    "DOT1Q": [
+        10,
+        20,
+        30
     ]
-
 }

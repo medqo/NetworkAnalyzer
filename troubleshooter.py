@@ -1,17 +1,16 @@
 def check_layer(layer, result):
 
 
-    # ==========================
+    # ==========================================
     # L1
-    # Interface確認
-    # ==========================
-
+    # ==========================================
 
     if layer == "L1":
 
 
-        if result.get("interface_ok") == False:
-
+        if result.get(
+            "interface_ok"
+        ) is False:
 
             return {
 
@@ -22,152 +21,202 @@ def check_layer(layer, result):
                 "Interface Down",
 
                 "reason":
-                "Interfaceがshutdown状態、または物理リンクがDownしています"
+                "通信に使用するInterfaceが接続状態になっていません",
 
+                "details":
+                None
             }
 
 
-
-    # ==========================
+    # ==========================================
     # L2
-    # VLAN / Trunk
-    # ==========================
-
+    # ==========================================
 
     elif layer == "L2":
 
 
-
         # VLAN確認
+        if result.get(
+            "vlan_ok"
+        ) is False:
 
-        if "vlan_ok" in result:
+            missing = result.get(
+                "missing_vlans",
+                []
+            )
 
 
-            if result["vlan_ok"] == False:
+            return {
 
+                "error":
+                "vlan_missing",
 
-                return {
+                "problem":
+                "VLAN設定エラー",
 
-                    "error":
-                    "vlan_missing",
+                "reason":
+                f"VLAN {missing} が作成されていません",
 
-                    "problem":
-                    "VLAN設定エラー",
-
-                    "reason":
-                    "必要なVLANが作成されていません"
-
-                }
-
+                "details":
+                missing
+            }
 
 
         # Trunk確認
+        if result.get(
+            "trunk_ok"
+        ) is False:
 
-        if "trunk_ok" in result:
-
-
-            if result["trunk_ok"] == False:
-
-
-                return {
-
-                    "error":
-                    "trunk_error",
-
-                    "problem":
-                    "Trunk VLAN Error",
-
-                    "reason":
-                    "Trunkで必要なVLANが許可されていません"
-
-                }
+            missing = result.get(
+                "missing_trunk_vlans",
+                []
+            )
 
 
+            if missing:
+
+                reason = (
+                    f"TrunkでVLAN {missing} "
+                    "が許可されていません"
+                )
 
 
-    # ==========================
+            else:
+
+                reason = (
+                    "Trunkが正常に設定されていません"
+                )
+
+
+            return {
+
+                "error":
+                "trunk_error",
+
+                "problem":
+                "Trunk設定エラー",
+
+                "reason":
+                reason,
+
+                "details":
+                missing
+            }
+
+
+    # ==========================================
     # L3
-    # Router / PC
-    # ==========================
-
+    # ==========================================
 
     elif layer == "L3":
 
 
+        # Subinterface存在確認
+        if result.get(
+            "subinterface_ok"
+        ) is False:
 
-        # Subinterface確認
-
-        if "subinterface_ok" in result:
-
-
-            if result["subinterface_ok"] == False:
+            missing = result.get(
+                "missing_subinterfaces",
+                []
+            )
 
 
-                return {
+            return {
 
-                    "error":
-                    "subinterface_missing",
+                "error":
+                "subinterface_missing",
 
-                    "problem":
-                    "Subinterface Error",
+                "problem":
+                "Subinterface設定エラー",
 
-                    "reason":
-                    "RouterのVLAN用Subinterfaceが不足しています"
+                "reason":
+                f"VLAN {missing} 用のSubinterfaceがありません",
 
-                }
-
+                "details":
+                missing
+            }
 
 
         # dot1Q確認
+        if result.get(
+            "dot1q_ok"
+        ) is False:
 
-        if "dot1q_ok" in result:
-
-
-            if result["dot1q_ok"] == False:
-
-
-                return {
-
-                    "error":
-                    "dot1q_missing",
-
-                    "problem":
-                    "IEEE802.1Q Error",
-
-                    "reason":
-                    "SubinterfaceにVLANタグ(dot1Q)設定がありません"
-
-                }
+            missing = result.get(
+                "missing_dot1q",
+                []
+            )
 
 
+            return {
 
-        # Default Gateway確認
+                "error":
+                "dot1q_missing",
 
-        if "ip_ok" in result:
+                "problem":
+                "IEEE802.1Q設定エラー",
 
+                "reason":
+                f"VLAN {missing} のdot1Q設定がありません",
 
-            if result["ip_ok"] == False:
-
-
-                return {
-
-                    "error":
-                    "gateway_error",
-
-                    "problem":
-                    "Default Gateway Error",
-
-                    "reason":
-                    "PCのDefault Gateway設定が不足しています"
-
-                }
+                "details":
+                missing
+            }
 
 
+        # Subinterface状態確認
+        if result.get(
+            "subinterface_status_ok"
+        ) is False:
 
-    # ==========================
+            down = result.get(
+                "down_subinterfaces",
+                []
+            )
+
+
+            missing = result.get(
+                "missing_status_subinterfaces",
+                []
+            )
+
+
+            if down:
+
+                reason = (
+                    f"VLAN {down} 用のSubinterfaceが "
+                    "up/up状態ではありません"
+                )
+
+
+            else:
+
+                reason = (
+                    f"VLAN {missing} 用のSubinterfaceを "
+                    "確認できません"
+                )
+
+
+            return {
+
+                "error":
+                "subinterface_down",
+
+                "problem":
+                "Subinterface Down",
+
+                "reason":
+                reason,
+
+                "details":
+                down or missing
+            }
+
+
+    # ==========================================
     # 正常
-    # ==========================
-
+    # ==========================================
 
     return {
 
@@ -178,6 +227,8 @@ def check_layer(layer, result):
         "なし",
 
         "reason":
-        "正常です"
+        "この診断項目は正常です",
 
+        "details":
+        None
     }
