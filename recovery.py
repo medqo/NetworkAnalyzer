@@ -36,7 +36,7 @@ def get_recovery(error, details=None):
 enable
 configure terminal
 
-interface FastEthernet0/1
+interface FastEthernet01
 no shutdown
 
 end
@@ -109,7 +109,7 @@ show vlan
 enable
 configure terminal
 
-interface FastEthernet0/7
+interface FastEthernet07
 
 switchport mode trunk
 switchport trunk allowed vlan 10,20,30
@@ -139,7 +139,7 @@ show interfaces trunk
 
             commands.append(
 f"""
-interface GigabitEthernet0/0/0.{vlan}
+interface FastEthernet0/0.{vlan}
 encapsulation dot1Q {vlan}
 ip address {gateway} 255.255.255.0
 """
@@ -184,7 +184,7 @@ show ip interface brief
 
             commands.append(
 f"""
-interface GigabitEthernet0/0/0.{vlan}
+interface FastEthernet0/0.{vlan}
 encapsulation dot1Q {vlan}
 """
             )
@@ -227,7 +227,7 @@ show running-config
 
             commands.append(
 f"""
-interface GigabitEthernet0/0/0.{vlan}
+interface FastEthernet0/0.{vlan}
 no shutdown
 """
             )
@@ -250,7 +250,7 @@ configure terminal
 
 """ + "\n".join(commands) + """
 
-interface GigabitEthernet0/0/0
+interface FastEthernet0/0
 no shutdown
 
 end
